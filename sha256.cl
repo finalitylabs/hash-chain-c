@@ -44,6 +44,9 @@ __constant uint origH[] = {
 };
 
 __kernel void sha256(__global const uint *M, __global const uint *N, __global uint *ret) {
+    int id = get_global_id(0);
+    printf("global id: %d\n", id);
+
     uint v[8];
     uint W[64];
     uint H[8];
@@ -55,8 +58,11 @@ __kernel void sha256(__global const uint *M, __global const uint *N, __global ui
 
     for(uint i = 0; i < N[0]; i++) {
         // 1
+        printf("i: %d\n", 16*id);
         for(uint t = 0; t < 16; t++) {
-            W[t] = M[i*16 + t];
+            //W[t] = M[0 + t];
+            //W[t] = M[i*16 + t + 32];
+            W[t] = M[i*16 + t + (16*id)];
         }
         for(uint t = 16; t < 64; t++) {
             W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
@@ -88,6 +94,7 @@ __kernel void sha256(__global const uint *M, __global const uint *N, __global ui
     }
 
     for(uint i = 0; i < 8; i++) {
-        ret[i] = H[i];
+        ret[i+(8*id)] = H[i];
+        //ret[i] = H[i];
     }
 }

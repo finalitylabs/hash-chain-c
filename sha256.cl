@@ -47,54 +47,98 @@ __kernel void sha256(__global const uint *M, __global const uint *N, __global ui
     int id = get_global_id(0);
     printf("global id: %d\n", id);
 
-    uint v[8];
-    uint W[64];
-    uint H[8];
-    uint T1, T2;
+    uint chain_length = 2;
 
-    for(uint i = 0; i < 8; i++) {
-        H[i] = origH[i];
-    }
+    for(int c = 0; c < chain_length; c++) {
+        uint v[8];
+        uint W[64];
+        uint H[8];
+        uint T1, T2;
 
-    for(uint i = 0; i < N[0]; i++) {
-        // 1
-        printf("i: %d\n", 16*id);
-        for(uint t = 0; t < 16; t++) {
-            //W[t] = M[0 + t];
-            //W[t] = M[i*16 + t + 32];
-            W[t] = M[i*16 + t + (16*id)];
-        }
-        for(uint t = 16; t < 64; t++) {
-            W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
+        for(uint i = 0; i < 8; i++) {
+            H[i] = origH[i];
         }
 
-        // 2
-        for(uint t = 0; t < 8; t++) {
-            v[t] = H[t];
+        for(uint i = 0; i < N[0]; i++) {
+            // 1
+            if(c == 0) {
+                printf("initial loops\n");
+                for(uint t = 0; t < 16; t++) {
+                    //W[t] = M[0 + t];
+                    //W[t] = M[i*16 + t + 32];
+                    W[t] = M[i*16 + t + (16*id)];
+                }
+            } else {
+                printf("second loop\n");
+                for(uint t = 0; t < 8; t++) {
+                    //W[t] = M[0 + t];
+                    //W[t] = M[i*16 + t + 32];
+                    W[t] = ret[i*16 + t + (8*id)];
+                }
+            }
+
+            if(c == 0) {
+                for(uint t = 16; t < 64; t++) {
+                    W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
+                }
+            } else {
+                for(uint t = 8; t < 32; t++) {
+                    W[t] = sig1(W[t-1]) + W[t-3] + sig0(W[t-7]) + W[t-8];
+                }
+            }
+
+            // 2
+            for(uint t = 0; t < 8; t++) {
+                v[t] = H[t];
+            }
+
+            // 3
+            if(c == 0) {
+                for(uint t = 0; t < 64; t++) {
+                    T1 = v[7] + ep1(v[4]) + Ch(v[4], v[5], v[6]) + K[t] + W[t];
+                    T2 = ep0(v[0]) + Maj(v[0], v[1], v[2]);
+
+                    v[7] = v[6];
+                    v[6] = v[5];
+                    v[5] = v[4];
+                    v[4] = v[3] + T1;
+                    v[3] = v[2];
+                    v[2] = v[1];
+                    v[1] = v[0];
+                    v[0] = T1 + T2;
+                }
+            } else {
+            for(uint t = 0; t < 32; t++) {
+                    T1 = v[7] + ep1(v[4]) + Ch(v[4], v[5], v[6]) + K[t] + W[t];
+                    T2 = ep0(v[0]) + Maj(v[0], v[1], v[2]);
+
+                    v[7] = v[6];
+                    v[6] = v[5];
+                    v[5] = v[4];
+                    v[4] = v[3] + T1;
+                    v[3] = v[2];
+                    v[2] = v[1];
+                    v[1] = v[0];
+                    v[0] = T1 + T2;
+                }
+            }
+
+            for(uint t = 0; t < 8; t++) {
+                H[t] += v[t];
+            }
         }
 
-        // 3
-        for(uint t = 0; t < 64; t++) {
-            T1 = v[7] + ep1(v[4]) + Ch(v[4], v[5], v[6]) + K[t] + W[t];
-            T2 = ep0(v[0]) + Maj(v[0], v[1], v[2]);
-
-            v[7] = v[6];
-            v[6] = v[5];
-            v[5] = v[4];
-            v[4] = v[3] + T1;
-            v[3] = v[2];
-            v[2] = v[1];
-            v[1] = v[0];
-            v[0] = T1 + T2;
+        if(c == 0) {
+            for(uint i = 0; i < 8; i++) {
+                ret[i+(8*id)] = H[i];
+                //ret[i] = H[i];
+            }
+        } else {
+            for(uint i = 0; i < 8; i++) {
+                ret[i+(8*id)] = H[i];
+                //ret[i] = H[i];
+            }
         }
 
-        for(uint t = 0; t < 8; t++) {
-            H[t] += v[t];
-        }
-    }
-
-    for(uint i = 0; i < 8; i++) {
-        ret[i+(8*id)] = H[i];
-        //ret[i] = H[i];
     }
 }

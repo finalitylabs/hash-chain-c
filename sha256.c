@@ -40,7 +40,7 @@ void hexOutput(void* buffer, size_t len) {
 }
 
 int sha256(cl_context context, cl_command_queue q, cl_kernel kernel) {
-    uint32_t chains = 3;
+    uint32_t chains = 1;
     // Generate seed random strings
     int random_string_length = 33;
 
@@ -143,18 +143,18 @@ int sha256(cl_context context, cl_command_queue q, cl_kernel kernel) {
     // }
 
     cl_int ret;
-    cl_mem msgMem = clCreateBuffer(context, CL_MEM_READ_ONLY, chains * 64 * N * sizeof(uint32_t), NULL, &ret);
+    cl_mem msgMem = clCreateBuffer(context, CL_MEM_READ_ONLY, chains * 16 * N * sizeof(uint32_t), NULL, &ret);
     cl_mem nMem = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint32_t), NULL, &ret);
     cl_mem out = clCreateBuffer(context, CL_MEM_WRITE_ONLY, chains * 8 * sizeof(uint32_t), NULL, &ret);
 
-    clEnqueueWriteBuffer(q, msgMem, CL_TRUE, 0, chains * 64 * N * sizeof(uint32_t), M, 0, NULL, NULL);
+    clEnqueueWriteBuffer(q, msgMem, CL_TRUE, 0, chains * 16 * N * sizeof(uint32_t), M, 0, NULL, NULL);
     clEnqueueWriteBuffer(q, nMem, CL_TRUE, 0, sizeof(uint32_t), &N, 0, NULL, NULL);
 
     clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&msgMem);
     clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&nMem);
     clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&out);
 
-    size_t totalSize = 3;
+    size_t totalSize = 1;
     size_t groupSize = 1;
     clEnqueueNDRangeKernel(q, kernel, 1, NULL, &totalSize, &groupSize, 0, NULL, NULL);
 
@@ -162,7 +162,7 @@ int sha256(cl_context context, cl_command_queue q, cl_kernel kernel) {
     uint32_t H[8*chains];
     clEnqueueReadBuffer(q, out, CL_TRUE, 0, 8 * sizeof(uint32_t) * chains, H, 0, NULL, NULL);
 
-    for(size_t i = 16; i < 24; i++) {
+    for(size_t i = 0; i < 8; i++) {
         H[i] = swapE32(H[i]);
         hex(&H[i], 4);
     }
